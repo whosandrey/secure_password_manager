@@ -15,13 +15,13 @@ and manages credentials through a command-line interface.
 
 ```mermaid
 flowchart TD
-    U["User / terminal"] -->|"Commands and hidden password input"| CLI["CLI and input validation"]
-    CLI --> AUTH["Authentication and session control"]
-    AUTH -->|"Authorized record operations"| V["Vault management"]
-    AUTH -->|"Master password for key derivation"| C["Cryptography / libsodium"]
-    V <-->|"Encrypt or decrypt records"| C
-    V <-->|"Read or write encrypted vault"| S["Storage"]
-    S <-->|"Encrypted bytes and public header"| F["Vault file"]
+    U["User"] -->|"Input"| CLI["CLI / validation"]
+    CLI --> AUTH["Authentication / session"]
+    AUTH -->|"Authorized actions"| V["Vault management"]
+    AUTH -->|"Master password"| C["Crypto / libsodium"]
+    V <-->|"Encrypt / decrypt"| C
+    V <-->|"Encrypted data"| S["Storage"]
+    S <-->|"Read / write"| F["Vault file"]
 ```
 
 ### CLI and input validation
