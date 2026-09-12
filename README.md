@@ -5,7 +5,8 @@ Autumn 2026.
 
 ## Project status
 
-Planning and architecture stage. The application is not implemented yet.
+An initial C prototype builds and initializes libsodium.
+Vault storage, authentication and credential management are not implemented yet.
 This is an educational project and must not be used to store real credentials.
 
 ## Objective
@@ -46,8 +47,34 @@ will be documented during the architecture stage.
 
 ## Build and run
 
-Not available yet. Reproducible build and usage instructions
-will be added when the initial implementation is ready.
+## Build and run
+
+The current prototype initializes libsodium and prints a startup message.
+Vault storage and password management are not implemented yet.
+
+### Dependencies
+
+On Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install build-essential git gdb libsodium-dev pkg-config
+```
+
+### Build
+
+Run from the repository root:
+
+```bash
+mkdir -p build
+gcc -std=c17 -Wall -Wextra -Wpedantic -g src/main.c -o build/password-manager $(pkg-config --cflags --libs libsodium)
+```
+
+### Run
+
+```bash
+./build/password-manager
+```
 
 ## Design documents
 
