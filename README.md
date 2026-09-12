@@ -48,3 +48,8 @@ will be documented during the architecture stage.
 
 Not available yet. Reproducible build and usage instructions
 will be added when the initial implementation is ready.
+
+## Design documents
+
+- [Threat model](docs/threat-model.md)
+- [Architecture](docs/architecture.md)
