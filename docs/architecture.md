@@ -2,14 +2,14 @@
 
 ## Status
 
-Initial architecture for Checkpoint 1.
+Architecture for Checkpoint 1.
 The application is not implemented yet.
 
 ## Overview
 
-A local, single-user password manager for Linux, written in C.
-The user unlocks an encrypted vault with a master password
-and manages credentials through a command-line interface.
+A single-user password manager for Linux, written in C language.
+The user unlock an encrypted vault with master password
+and manage credentials through a CLI.
 
 ## Components and data flow
 
@@ -26,49 +26,45 @@ flowchart TD
 
 ### CLI and input validation
 
-Accept commands and interactive input with explicit length limits.
-Never print plaintext passwords or include secrets in command-line
-arguments. The credential retrieval mechanism is pending clarification.
+Commands and interactive input with length restrictions.
+Dont display passwords in plain text, and dont type confidential data in the command line.
 
 ### Authentication and session control
 
-Maintain locked and unlocked states.
-Allow record operations only while the vault is unlocked.
-Locking or exiting clears the session and sensitive buffers.
+Ensure that the “locked” and “unlocked” states are maintained.
+Allow data modification only when the storage is unlocked.
+Locking or logging out clears the session and any confidential data.
 
-There are no separate application accounts.
-The unlocked vault owner is the application's single user.
+Only one user.
+The owner of the unlocked storage is the only user of the application.
 
 ### Vault management
 
-Manage service names, usernames and passwords.
-Support adding, listing, retrieving, updating and deleting records.
-Validate decrypted record structure before using it.
+Management of user names and passwords.
+Support for adding, viewing the list, retrieving, updating, and deleting records.
+Verification of the structure of a decrypted record before it is used.
 
 ### Cryptography
 
-Use libsodium rather than implementing cryptographic algorithms.
+Use libsodium.
 
 Proposed scheme:
 
-- Argon2id derives a key from the master password and a random salt.
-- XChaCha20-Poly1305 encrypts and authenticates the vault contents.
-- Each encryption uses a fresh random nonce.
-- The public header is authenticated as associated data.
-- Unlocking succeeds only after authenticated decryption succeeds.
+- Argon2id generates a key based on a master password and a random value.
+- XChaCha20-Poly1305 provides encryption and authentication for the storage contents.
+- A new nonce is used for each encryption operation.
+- The exposed header is authenticated as associated data.
+- Unlocking occurs only after successful authenticated decryption.
 
-The master password and encryption key are never saved to disk.
-This proposal uses successful authenticated decryption to verify
-the derived key; it does not store a separate password verifier.
-Alignment with the assignment's password-hashing requirement
-will be confirmed before implementation.
+The master password and encryption key are never stored in disk.
+In this implementation,
+successful authenticated decryption is used to verify the generated key; a separate password verification mechanism is not used. 
 
 ### Storage
 
-Store the vault in a private directory owned by the current Linux user.
-Use restrictive permissions and safe file-opening procedures.
-Save changes through a securely created temporary file and atomic
-replacement, with write errors handled before reporting success.
+Store the vault in the private directory of the current user.
+Restricted access rights and secure file-opening procedures.
+
 
 ## Proposed vault format
 
@@ -94,9 +90,7 @@ before implementing the file parser.
 4. Clear the master-password buffer.
 5. Authenticate and decrypt the vault.
 6. Validate the records and enter the unlocked state.
-7. Keep the key and decrypted records only while needed
-   during the unlocked session.
-8. Clear sensitive buffers when locking, exiting or handling errors.
+7. Clear sensitive buffers when locking, exiting or handling errors.
 
 A failed unlock must leave the application locked.
 
@@ -114,8 +108,3 @@ Record key events such as unlock attempts, vault changes and failures.
 Use structured events with timestamps and outcomes.
 Do not log master passwords, keys, stored credentials or raw user input.
 
-## Pending decisions
-
-- Lecturer-approved credential retrieval mechanism.
-- Final vault encoding and resource limits.
-- Confirmation of the proposed master-password verification design.
