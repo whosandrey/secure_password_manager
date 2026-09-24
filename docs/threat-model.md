@@ -27,22 +27,20 @@ An attacker may:
 - Attempt record operations without unlocking the vault.
 - Interrupt the application during an operation.
 
-##. Planned mitigations
+## Threats and planned mitigations
 
 | ID | Threat | Planned mitigation |
-
 | --- | --- | --- |
-
-| T1 | Credentials being disclosed from a stolen vault | Encrypt every field using authenticated encryption. |
-| T2 | Offline guessing of the master password | Use Argon2id with resource costs and encourage a strong master password. |
-| T3 | Access to records without authentication | Require a successful vault login before each record operation. Clear the state when locking or exiting. |
-| T4 | Vault tampering or truncation | Validate the file structure. Verify authentication during decryption. Reject any data without exposing decrypted content. |
-| T5 | Memory corruption due to invalid input data | Limit the length of each input data field. |
-| T6 | Secrets exposed through output. Logs | Use hidden interactive password input. Never put secrets in command lines, logs or error messages. |
-| T7 | Secrets remaining in process memory | Minimise the lifetime of secrets. Reduce copies. Wipe sensitive buffers with libsodium utilities on error paths. |
-| T8 | Vault corruption during an interrupted save | Write to a securely created temporary file and use an atomic replacement procedure. Test. Write‑failure paths. |
-| T9 | Access by another Linux user | Restrict the vault directory and file permissions. Do not require root privileges. |
-| T10 | File operations redirected through symbolic links | Use controlled storage paths and file‑opening procedures that reject unsafe symbolic‑link targets.
+| T1 | Disclosure of credentials from a stolen vault | Encrypt all credential fields using authenticated encryption. |
+| T2 | Guessing of the master password | Use Argon2id resource costs and encourage a strong master password. |
+| T3 | Access to records without authentication | Require successful vault login before every record operation. Clear unlocked state when locking or exiting. |
+| T4 | Vault tampering or truncation | Validate the file structure and verify authentication during decryption. Reject invalid data without exposing decrypted content. |
+| T5 | Memory corruption due to invalid input data | Limit the length of the input data. |
+| T6 | Secrets exposed through output or logs | Use hidden interactive password input. Never place secrets in command line, logs or error messages. |
+| T7 | Secrets remaining in process memory | Minimise secret lifetimes and copies. Wipe sensitive buffers using libsodium utilities on normal and handled error paths. |
+| T8 | Vault corruption during an interrupted save | Write to a securely created temporary file and use an atomic replacement procedure. Test interruption and write-failure paths. |
+| T9 | Access by another unprivileged Linux user | Restrict vault-directory and file permissions. Do not require root privileges. |
+| T10 | File operations redirected through symbolic links | Use controlled storage paths and file-opening procedures that reject unsafe symbolic-link targets. |
 
 ## Trust boundaries
 
