@@ -29,6 +29,25 @@ and demonstrates secure programming practices.
 The credential retrieval mechanism and user-isolation model
 will be clarified with the lecturer before implementation.
 
+## Planned CLI menu
+
+The application will use an interactive command-line menu.
+
+While locked:
+- Create a vault.
+- Unlock an existing vault using a master password.
+- Exit.
+
+While unlocked:
+- List entries with passwords masked.
+- Add a credential.
+- Retrieve a credential using a mechanism to be confirmed with the lecturer.
+- Update a credential.
+- Delete a credential.
+- Lock the vault and return to the locked menu.
+
+These operations are planned and are not implemented in the current prototype.
+
 ## Proposed technologies
 
 - C17 as the implementation language.
