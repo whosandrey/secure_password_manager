@@ -5,71 +5,58 @@ Autumn 2026.
 
 ## Project status
 
-An initial C prototype builds and initializes libsodium.
-Vault storage, authentication and credential management are not implemented yet.
-This is an educational project and must not be used to store real credentials.
+This C-language project prototype allows you to initialize the libsodium libraries.
+Data storage in Vault, authentication, and account management.
+This project is intended for academic purposes and should not be used to store real passwords.
 
 ## Objective
 
-Develop a local password manager that securely stores credentials
-and demonstrates secure programming practices.
+Create a local password manager that allows you to securely store usernames and passwords
 
 ## Planned features
 
-- Master-password authentication.
-- Encrypted storage of service names, usernames and passwords.
-- Adding, retrieving, updating and deleting credentials.
-- Per-user access control for every record operation.
-- A command-line interface that does not display plaintext passwords.
-- Input validation and safe handling of malformed data.
-- Explicit cleanup of sensitive memory buffers.
-- Structured logging without passwords, keys or other secrets.
+- Authentication using a master password.
+- Encrypted storage of usernames and passwords.
+- User and password management.
+- A CLI that does not display passwords in plain text.
+- Validation of input data and safe handling of erroneous data.
+- Explicit clearing of memory buffers containing secrets.
+- Structured logging without revealing passwords, keys, or other sensitive data.
 - Security and functionality tests.
-
-The credential retrieval mechanism and user-isolation model
-will be clarified with the lecturer before implementation.
 
 ## Planned CLI menu
 
-The application will use an interactive command-line menu.
+The application will use an interactive CLI.
 
-While locked:
-- Create a vault.
-- Unlock an existing vault using a master password.
-- Exit.
+In lock mode:
+- Create a vault
+- Unlock an existing vault using the master password.
+- Log out.
 
-While unlocked:
-- List entries with passwords masked.
+In unlock mode:
+- List users with passwords masked.
 - Add a credential.
-- Retrieve a credential using a mechanism to be confirmed with the lecturer.
+- Get a credential.
 - Update a credential.
 - Delete a credential.
 - Lock the vault and return to the locked menu.
 
-These operations are planned and are not implemented in the current prototype.
-
 ## Proposed technologies
 
-- C17 as the implementation language.
-- libsodium for cryptography and sensitive-memory utilities.
+- C17 as the coding language.
+- libsodium for cryptography and sensitive memory utilities.
 - Linux as the target environment.
-
-The vault format, cryptographic scheme and build system
-will be documented during the architecture stage.
 
 ## Planned architecture
 
 - Interface: command handling and input validation.
-- Authentication and access control: vault unlocking and record ownership.
-- Cryptography: key derivation, encryption and decryption.
+- Authentication and access control.
+- Cryptography: key displaying, encryption and decryption.
 - Storage: reading and safely updating encrypted vault data.
 
 ## Build and run
 
-## Build and run
-
-The current prototype initializes libsodium and prints a startup message.
-Vault storage and password management are not implemented yet.
+Project was built and tested on Ubuntu WSL 2
 
 ### Dependencies
 
@@ -99,3 +86,5 @@ gcc -std=c17 -Wall -Wextra -Wpedantic -g src/main.c -o build/password-manager $(
 
 - [Threat model](docs/threat-model.md)
 - [Architecture](docs/architecture.md)
+
+*ChatGPT by OpenAI helped with unfamiliar terms, assist with English language, and improved Markdown formatting.  I verified the build instructions by running them on Ubuntu using WSL 2*
