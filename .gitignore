@@ -56,3 +56,6 @@ dkms.conf
 
 # Local build output
 /build/
+
+# Local password vaults
+*.vault
