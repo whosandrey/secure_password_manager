@@ -1,8 +1,18 @@
-#ifndef _INPUT_H_
-#define _INPUT_H_
+#ifndef INPUT_H
+#define INPUT_H
 
 #include <stddef.h>
 
-int get_hidden_input(const char *prompt, char *buf, size_t buf_size);
+int get_text_input(
+    const char *prompt,
+    char *buffer,
+    size_t buffer_size
+);
+
+int get_hidden_input(
+    const char *prompt,
+    char *buffer,
+    size_t buffer_size
+);
 
 #endif

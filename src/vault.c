@@ -12,8 +12,14 @@
 
 #include <sodium.h>
 
+#define VAULT_VERSION 2U
 #define VAULT_MAGIC_SIZE 8U
 #define STORED_U64_SIZE 8U
+
+#define VAULT_PAYLOAD_SIZE             \
+    (VAULT_SERVICE_SIZE              \
+     + VAULT_USERNAME_SIZE           \
+     + VAULT_PASSWORD_SIZE)
 
 #define VAULT_HEADER_SIZE                                      \
     (VAULT_MAGIC_SIZE + 2U + STORED_U64_SIZE + STORED_U64_SIZE \
@@ -21,22 +27,18 @@
      + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES            \
      + STORED_U64_SIZE)
 
+#define VAULT_CIPHERTEXT_SIZE \
+    (VAULT_PAYLOAD_SIZE \
+     + crypto_aead_xchacha20poly1305_ietf_ABYTES)
+
 static const unsigned char VAULT_MAGIC[VAULT_MAGIC_SIZE] = {
     'S', 'P', 'M', 'V', 'A', 'U', 'L', 'T'
 };
 
-static const unsigned char EMPTY_VAULT_DATA[] = {
-    'S', 'P', 'M', '_', 'E', 'M', 'P', 'T', 'Y', '_', 'V', '1'
-};
-
-#define EMPTY_VAULT_SIZE (sizeof EMPTY_VAULT_DATA)
-
-#define VAULT_CIPHERTEXT_SIZE \
-    (EMPTY_VAULT_SIZE + crypto_aead_xchacha20poly1305_ietf_ABYTES)
-
-static int write_all(int file_descriptor,
-                     const unsigned char *data,
-                     size_t data_size)
+static int write_all(
+    int file_descriptor,
+    const unsigned char *data,
+    size_t data_size)
 {
     size_t written = 0;
 
@@ -65,9 +67,10 @@ static int write_all(int file_descriptor,
     return 0;
 }
 
-static int read_all(int file_descriptor,
-                    unsigned char *data,
-                    size_t data_size)
+static int read_all(
+    int file_descriptor,
+    unsigned char *data,
+    size_t data_size)
 {
     size_t received = 0;
 
@@ -121,16 +124,145 @@ static uint64_t load_u64_le(
     return value;
 }
 
-int vault_create(const char *path, const char *master_password)
+static int field_is_valid(
+    const char *field,
+    size_t field_size)
+{
+    if (field == NULL || field[0] == '\0') {
+        return 0;
+    }
+
+    return memchr(field, '\0', field_size) != NULL;
+}
+
+static int record_is_valid(
+    const struct VaultRecord *record)
+{
+    if (record == NULL) {
+        return 0;
+    }
+
+    return field_is_valid(
+               record->service,
+               sizeof record->service
+           )
+        && field_is_valid(
+               record->username,
+               sizeof record->username
+           )
+        && field_is_valid(
+               record->password,
+               sizeof record->password
+           );
+}
+
+static void serialize_record(
+    const struct VaultRecord *record,
+    unsigned char payload[VAULT_PAYLOAD_SIZE])
+{
+    size_t offset = 0;
+    size_t length;
+
+    memset(payload, 0, VAULT_PAYLOAD_SIZE);
+
+    length = strnlen(
+        record->service,
+        sizeof record->service
+    );
+    memcpy(payload + offset, record->service, length);
+    offset += VAULT_SERVICE_SIZE;
+
+    length = strnlen(
+        record->username,
+        sizeof record->username
+    );
+    memcpy(payload + offset, record->username, length);
+    offset += VAULT_USERNAME_SIZE;
+
+    length = strnlen(
+        record->password,
+        sizeof record->password
+    );
+    memcpy(payload + offset, record->password, length);
+}
+
+static int deserialize_record(
+    const unsigned char payload[VAULT_PAYLOAD_SIZE],
+    struct VaultRecord *record)
+{
+    size_t service_offset = 0;
+    size_t username_offset = VAULT_SERVICE_SIZE;
+    size_t password_offset =
+        VAULT_SERVICE_SIZE + VAULT_USERNAME_SIZE;
+
+    if (record == NULL) {
+        return -1;
+    }
+
+    if (memchr(
+            payload + service_offset,
+            '\0',
+            VAULT_SERVICE_SIZE) == NULL ||
+        memchr(
+            payload + username_offset,
+            '\0',
+            VAULT_USERNAME_SIZE) == NULL ||
+        memchr(
+            payload + password_offset,
+            '\0',
+            VAULT_PASSWORD_SIZE) == NULL) {
+        return -1;
+    }
+
+    memset(record, 0, sizeof *record);
+
+    memcpy(
+        record->service,
+        payload + service_offset,
+        VAULT_SERVICE_SIZE
+    );
+
+    memcpy(
+        record->username,
+        payload + username_offset,
+        VAULT_USERNAME_SIZE
+    );
+
+    memcpy(
+        record->password,
+        payload + password_offset,
+        VAULT_PASSWORD_SIZE
+    );
+
+    if (!record_is_valid(record)) {
+        vault_record_clear(record);
+        return -1;
+    }
+
+    return 0;
+}
+
+void vault_record_clear(struct VaultRecord *record)
+{
+    if (record != NULL) {
+        sodium_memzero(record, sizeof *record);
+    }
+}
+
+int vault_create(
+    const char *path,
+    const char *master_password,
+    const struct VaultRecord *record)
 {
     unsigned char header[VAULT_HEADER_SIZE];
+    unsigned char payload[VAULT_PAYLOAD_SIZE];
     unsigned char salt[crypto_pwhash_SALTBYTES];
     unsigned char nonce[
         crypto_aead_xchacha20poly1305_ietf_NPUBBYTES
     ];
     unsigned char key[
         crypto_aead_xchacha20poly1305_ietf_KEYBYTES
-    ];
+    ] = {0};
     unsigned char ciphertext[VAULT_CIPHERTEXT_SIZE];
 
     unsigned long long ciphertext_size = 0;
@@ -144,9 +276,12 @@ int vault_create(const char *path, const char *master_password)
 
     if (path == NULL ||
         master_password == NULL ||
-        master_password[0] == '\0') {
+        master_password[0] == '\0' ||
+        !record_is_valid(record)) {
         return VAULT_FAILURE;
     }
+
+    serialize_record(record, payload);
 
     randombytes_buf(salt, sizeof salt);
     randombytes_buf(nonce, sizeof nonce);
@@ -154,8 +289,9 @@ int vault_create(const char *path, const char *master_password)
     memcpy(header + offset, VAULT_MAGIC, VAULT_MAGIC_SIZE);
     offset += VAULT_MAGIC_SIZE;
 
-    header[offset++] = 1U;
-    header[offset++] = (unsigned char) crypto_pwhash_ALG_ARGON2ID13;
+    header[offset++] = VAULT_VERSION;
+    header[offset++] =
+        (unsigned char) crypto_pwhash_ALG_ARGON2ID13;
 
     store_u64_le(header + offset, (uint64_t) operations);
     offset += STORED_U64_SIZE;
@@ -183,6 +319,7 @@ int vault_create(const char *path, const char *master_password)
             operations,
             memory,
             crypto_pwhash_ALG_ARGON2ID13) != 0) {
+        sodium_memzero(payload, sizeof payload);
         sodium_memzero(key, sizeof key);
         return VAULT_FAILURE;
     }
@@ -190,18 +327,15 @@ int vault_create(const char *path, const char *master_password)
     if (crypto_aead_xchacha20poly1305_ietf_encrypt(
             ciphertext,
             &ciphertext_size,
-            EMPTY_VAULT_DATA,
-            EMPTY_VAULT_SIZE,
+            payload,
+            sizeof payload,
             header,
             sizeof header,
             NULL,
             nonce,
-            key) != 0) {
-        sodium_memzero(key, sizeof key);
-        return VAULT_FAILURE;
-    }
-
-    if (ciphertext_size != VAULT_CIPHERTEXT_SIZE) {
+            key) != 0 ||
+        ciphertext_size != VAULT_CIPHERTEXT_SIZE) {
+        sodium_memzero(payload, sizeof payload);
         sodium_memzero(key, sizeof key);
         return VAULT_FAILURE;
     }
@@ -213,6 +347,7 @@ int vault_create(const char *path, const char *master_password)
     );
 
     if (file_descriptor < 0) {
+        sodium_memzero(payload, sizeof payload);
         sodium_memzero(key, sizeof key);
 
         if (errno == EEXIST) {
@@ -222,12 +357,14 @@ int vault_create(const char *path, const char *master_password)
         return VAULT_FAILURE;
     }
 
-    if (write_all(file_descriptor, header, sizeof header) != 0 ||
+    if (write_all(
+            file_descriptor,
+            header,
+            sizeof header) != 0 ||
         write_all(
             file_descriptor,
             ciphertext,
-            (size_t) ciphertext_size
-        ) != 0 ||
+            (size_t) ciphertext_size) != 0 ||
         fsync(file_descriptor) != 0) {
         goto cleanup;
     }
@@ -238,7 +375,7 @@ int vault_create(const char *path, const char *master_password)
     }
 
     file_descriptor = -1;
-    status =VAULT_SUCCESS;
+    status = VAULT_SUCCESS;
 
 cleanup:
     if (file_descriptor >= 0) {
@@ -249,24 +386,28 @@ cleanup:
         unlink(path);
     }
 
+    sodium_memzero(payload, sizeof payload);
     sodium_memzero(key, sizeof key);
     return status;
 }
 
-int vault_unlock(const char *path, const char *master_password)
+int vault_unlock(
+    const char *path,
+    const char *master_password,
+    struct VaultRecord *record)
 {
     unsigned char header[VAULT_HEADER_SIZE];
     unsigned char ciphertext[VAULT_CIPHERTEXT_SIZE];
-    unsigned char plaintext[EMPTY_VAULT_SIZE];
+    unsigned char payload[VAULT_PAYLOAD_SIZE];
     unsigned char salt[crypto_pwhash_SALTBYTES];
     unsigned char nonce[
         crypto_aead_xchacha20poly1305_ietf_NPUBBYTES
     ];
     unsigned char key[
         crypto_aead_xchacha20poly1305_ietf_KEYBYTES
-    ];
+    ] = {0};
 
-    unsigned long long plaintext_size = 0;
+    unsigned long long payload_size = 0;
     uint64_t stored_operations;
     uint64_t stored_memory;
     uint64_t stored_ciphertext_size;
@@ -276,9 +417,14 @@ int vault_unlock(const char *path, const char *master_password)
     int status = VAULT_FAILURE;
     struct stat file_information;
 
+    if (record != NULL) {
+        vault_record_clear(record);
+    }
+
     if (path == NULL ||
         master_password == NULL ||
-        master_password[0] == '\0') {
+        master_password[0] == '\0' ||
+        record == NULL) {
         return VAULT_FAILURE;
     }
 
@@ -298,13 +444,17 @@ int vault_unlock(const char *path, const char *master_password)
     if (fstat(file_descriptor, &file_information) != 0 ||
         !S_ISREG(file_information.st_mode) ||
         file_information.st_size !=
-            (off_t) (VAULT_HEADER_SIZE + VAULT_CIPHERTEXT_SIZE) ||
-        read_all(file_descriptor, header, sizeof header) != 0 ||
+            (off_t) (
+                VAULT_HEADER_SIZE + VAULT_CIPHERTEXT_SIZE
+            ) ||
+        read_all(
+            file_descriptor,
+            header,
+            sizeof header) != 0 ||
         read_all(
             file_descriptor,
             ciphertext,
-            sizeof ciphertext
-        ) != 0) {
+            sizeof ciphertext) != 0) {
         close(file_descriptor);
         return VAULT_FAILURE;
     }
@@ -316,14 +466,13 @@ int vault_unlock(const char *path, const char *master_password)
     if (memcmp(
             header + offset,
             VAULT_MAGIC,
-            VAULT_MAGIC_SIZE
-        ) != 0) {
+            VAULT_MAGIC_SIZE) != 0) {
         return VAULT_FAILURE;
     }
 
     offset += VAULT_MAGIC_SIZE;
 
-    if (header[offset++] != 1U) {
+    if (header[offset++] != VAULT_VERSION) {
         return VAULT_FAILURE;
     }
 
@@ -344,8 +493,7 @@ int vault_unlock(const char *path, const char *master_password)
     memcpy(nonce, header + offset, sizeof nonce);
     offset += sizeof nonce;
 
-    stored_ciphertext_size =
-        load_u64_le(header + offset);
+    stored_ciphertext_size = load_u64_le(header + offset);
 
     if (stored_operations < crypto_pwhash_OPSLIMIT_MIN ||
         stored_operations > crypto_pwhash_OPSLIMIT_SENSITIVE ||
@@ -369,8 +517,8 @@ int vault_unlock(const char *path, const char *master_password)
     }
 
     if (crypto_aead_xchacha20poly1305_ietf_decrypt(
-            plaintext,
-            &plaintext_size,
+            payload,
+            &payload_size,
             NULL,
             ciphertext,
             sizeof ciphertext,
@@ -382,12 +530,8 @@ int vault_unlock(const char *path, const char *master_password)
         goto cleanup;
     }
 
-    if (plaintext_size != EMPTY_VAULT_SIZE ||
-        sodium_memcmp(
-            plaintext,
-            EMPTY_VAULT_DATA,
-            EMPTY_VAULT_SIZE
-        ) != 0) {
+    if (payload_size != VAULT_PAYLOAD_SIZE ||
+        deserialize_record(payload, record) != 0) {
         status = VAULT_FAILURE;
         goto cleanup;
     }
@@ -395,7 +539,12 @@ int vault_unlock(const char *path, const char *master_password)
     status = VAULT_SUCCESS;
 
 cleanup:
+    sodium_memzero(payload, sizeof payload);
     sodium_memzero(key, sizeof key);
-    sodium_memzero(plaintext, sizeof plaintext);
+
+    if (status != VAULT_SUCCESS) {
+        vault_record_clear(record);
+    }
+
     return status;
 }

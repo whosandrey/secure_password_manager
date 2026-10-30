@@ -14,6 +14,7 @@ int main(void)
 
     char master_password[MASTER_PASSWORD_MAX] = {0};
     char password_confirmation[MASTER_PASSWORD_MAX] = {0};
+    struct VaultRecord record = {0};
 
     if (sodium_init() < 0) {
         fprintf(stderr, "Failed to initialize the application.\n");
@@ -54,7 +55,10 @@ int main(void)
                     master_password,
                     sizeof master_password
                 );
-                fprintf(stderr, "Unable to read password confirmation.\n");
+                fprintf(
+                    stderr,
+                    "Unable to read password confirmation.\n"
+                );
                 return 1;
             }
 
@@ -62,6 +66,8 @@ int main(void)
                     master_password,
                     password_confirmation,
                     sizeof master_password) != 0) {
+                fprintf(stderr, "Master passwords do not match.\n");
+
                 sodium_memzero(
                     master_password,
                     sizeof master_password
@@ -70,13 +76,71 @@ int main(void)
                     password_confirmation,
                     sizeof password_confirmation
                 );
-                fprintf(stderr, "Master passwords do not match.\n");
+
                 break;
+            }
+
+            if (get_text_input(
+                    "Service: ",
+                    record.service,
+                    sizeof record.service) != 0) {
+                fprintf(stderr, "Invalid service name.\n");
+
+                sodium_memzero(
+                    master_password,
+                    sizeof master_password
+                );
+                sodium_memzero(
+                    password_confirmation,
+                    sizeof password_confirmation
+                );
+                vault_record_clear(&record);
+
+                return 1;
+            }
+
+            if (get_text_input(
+                    "Username: ",
+                    record.username,
+                    sizeof record.username) != 0) {
+                fprintf(stderr, "Invalid username.\n");
+
+                sodium_memzero(
+                    master_password,
+                    sizeof master_password
+                );
+                sodium_memzero(
+                    password_confirmation,
+                    sizeof password_confirmation
+                );
+                vault_record_clear(&record);
+
+                return 1;
+            }
+
+            if (get_hidden_input(
+                    "Password to store: ",
+                    record.password,
+                    sizeof record.password) != 0) {
+                fprintf(stderr, "Invalid credential password.\n");
+
+                sodium_memzero(
+                    master_password,
+                    sizeof master_password
+                );
+                sodium_memzero(
+                    password_confirmation,
+                    sizeof password_confirmation
+                );
+                vault_record_clear(&record);
+
+                return 1;
             }
 
             vault_status = vault_create(
                 DEFAULT_VAULT_FILE,
-                master_password
+                master_password,
+                &record
             );
 
             sodium_memzero(
@@ -87,6 +151,7 @@ int main(void)
                 password_confirmation,
                 sizeof password_confirmation
             );
+            vault_record_clear(&record);
 
             if (vault_status == VAULT_SUCCESS) {
                 printf("Encrypted vault created successfully.\n");
@@ -109,7 +174,8 @@ int main(void)
 
             vault_status = vault_unlock(
                 DEFAULT_VAULT_FILE,
-                master_password
+                master_password,
+                &record
             );
 
             sodium_memzero(
@@ -119,14 +185,21 @@ int main(void)
 
             if (vault_status == VAULT_SUCCESS) {
                 printf("Vault unlocked successfully.\n");
+                printf("Service: %s\n", record.service);
+                printf("Username: %s\n", record.username);
+                printf("Password: ********\n");
             } else if (vault_status == VAULT_DOES_NOT_EXIST) {
                 fprintf(stderr, "Vault does not exist.\n");
             } else if (vault_status == VAULT_AUTH_FAILED) {
-                fprintf(stderr, "Incorrect master password or damaged vault.\n");
+                fprintf(
+                    stderr,
+                    "Incorrect master password or damaged vault.\n"
+                );
             } else {
                 fprintf(stderr, "Unable to unlock vault.\n");
             }
 
+            vault_record_clear(&record);
             break;
 
         case 3:
@@ -143,6 +216,7 @@ int main(void)
         password_confirmation,
         sizeof password_confirmation
     );
+    vault_record_clear(&record);
 
     return 0;
 }
