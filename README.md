@@ -5,9 +5,14 @@ Autumn 2026.
 
 ## Project status
 
-This C-language project prototype allows you to initialize the libsodium libraries.
-Data storage in Vault, authentication, and account management.
-This project is intended for academic purposes and should not be used to store real passwords.
+It can create an encrypted vault locally, which can have one credential.
+The encrypted vault can only be accessed with the right master password.
+
+The service name and username are displayed after unlocking.
+The password stored will not be displayed in clear text.
+
+This project is for educational purposes only, and should not be used
+to store any real passwords.
 
 ## Objective
 
@@ -56,11 +61,9 @@ In unlock mode:
 
 ## Build and run
 
-Project was built and tested on Ubuntu WSL 2
+The project was built and tested on Ubuntu using WSL 2.
 
 ### Dependencies
-
-On Ubuntu:
 
 ```bash
 sudo apt update
@@ -72,15 +75,38 @@ sudo apt install build-essential git gdb libsodium-dev pkg-config
 Run from the repository root:
 
 ```bash
-mkdir -p build
-gcc -std=c17 -Wall -Wextra -Wpedantic -g src/main.c -o build/password-manager $(pkg-config --cflags --libs libsodium)
+make
 ```
 
 ### Run
 
 ```bash
-./build/password-manager
+make run
 ```
+
+The vault file is created as `passwords.vault` in the current directory.
+It is excluded from Git.
+
+### Sanitizer build
+
+```bash
+make sanitize
+./build/password-manager-sanitize
+```
+
+### Clean generated files
+
+```bash
+make clean
+```
+## Current limitations
+
+- The prototype stores one credential.
+- Credentials cannot yet be updated or deleted.
+- The stored password is always masked after unlocking.
+- The vault location is currently fixed to `passwords.vault`.
+- Only the Linux command-line environment is supported.
+
 
 ## Design documents
 
