@@ -112,5 +112,6 @@ make clean
 
 - [Threat model](docs/threat-model.md)
 - [Architecture](docs/architecture.md)
+- [Checkpoint 2 progress](docs/checkpoint-2-progress.md)
 
 *ChatGPT by OpenAI helped with unfamiliar terms, assist with English language, and improved Markdown formatting.  I verified the build instructions by running them on Ubuntu using WSL 2*
