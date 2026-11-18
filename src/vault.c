@@ -186,6 +186,36 @@ static void serialize_record(
     memcpy(payload + offset, record->password, length);
 }
 
+static size_t serialize_vault_data(
+    const struct VaultData *data,
+    unsigned char *payload,
+    size_t capacity)
+{
+    if (data == NULL || payload == NULL || data->count > 16) {
+        return 0;
+    }
+
+    size_t needed = 1 + data->count * VAULT_PAYLOAD_SIZE;
+    if (capacity < needed) {
+        return 0;
+    }
+
+    for (unsigned int i = 0; i < data->count; ++i) {
+        if (!record_is_valid(&data->records[i])) {
+            return 0;
+        }
+    }
+
+    payload[0] = (unsigned char)data->count;
+
+    for (unsigned int i = 0; i < data->count; ++i) {
+        size_t offset = 1 + i * VAULT_PAYLOAD_SIZE;
+        serialize_record(&data->records[i], payload + offset);
+    }
+
+    return needed;
+}
+
 static int deserialize_record(
     const unsigned char payload[VAULT_PAYLOAD_SIZE],
     struct VaultRecord *record)
