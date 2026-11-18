@@ -545,6 +545,12 @@ cleanup:
     if (status != VAULT_SUCCESS) {
         vault_record_clear(record);
     }
-
+    
     return status;
+}
+void vault_data_clear(struct VaultData *data)
+{
+    if (data != NULL) {
+        sodium_memzero(data, sizeof *data);
+    }
 }

@@ -13,6 +13,11 @@ struct VaultRecord {
     char password[VAULT_PASSWORD_SIZE];
 };
 
+struct VaultData {
+    unsigned int count;
+    struct VaultRecord records[16];
+};
+
 enum VaultStatus {
     VAULT_SUCCESS = 0,
     VAULT_FAILURE = -1,
@@ -34,5 +39,6 @@ int vault_unlock(
 );
 
 void vault_record_clear(struct VaultRecord *record);
+void vault_data_clear(struct VaultData *data);
 
 #endif
