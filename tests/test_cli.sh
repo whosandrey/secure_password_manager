@@ -33,6 +33,10 @@ failed_log=$(printf '2\nwrong-master\n' | run_logged) || :
 
 printf '%s\n' "$create_log" | grep -Fxq 'event=vault_create result=success'
 printf '%s\n' "$add_log" | grep -Fxq 'event=vault_add_entry result=success'
+if [ "$(stat -c '%a' passwords.vault)" != 600 ]; then
+    echo "FAIL: vault permissions after adding an entry are not 0600" >&2
+    exit 1
+fi
 printf '%s\n' "$unlock_log" | grep -Fxq 'event=vault_unlock result=success'
 printf '%s\n' "$failed_log" | grep -Fxq 'event=vault_unlock result=failure'
 

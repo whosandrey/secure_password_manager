@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <sodium.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "vault.h"
 
@@ -72,6 +73,22 @@ int main(void)
     assert(status == VAULT_FAILURE);
 
     vault_record_clear(&invalid);
+
+        status = chmod(path, 0644);
+    assert(status == 0);
+
+    status = vault_unlock(path, master_password, &reopened);
+    assert(status == VAULT_FAILURE);
+
+    status = vault_add_entry(path, master_password, &second);
+    assert(status == VAULT_FAILURE);
+
+    status = chmod(path, 0600);
+    assert(status == 0);
+
+    status = vault_unlock(path, master_password, &reopened);
+    assert(status == VAULT_SUCCESS);
+    assert(reopened.count == 2);
 
     vault_data_clear(&initial);
     vault_data_clear(&reopened);

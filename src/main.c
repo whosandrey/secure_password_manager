@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <sodium.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "input.h"
 #include "vault.h"
@@ -9,7 +11,7 @@
 int main(void)
 {
     int option;
-    int character;
+
     int vault_status;
 
     char master_password[MASTER_PASSWORD_MAX] = {0};
@@ -27,14 +29,26 @@ int main(void)
     printf("2. Unlock vault\n");
     printf("3. Exit\n");
     printf("4. Add entry to existing vault\n");
-    printf("Choose an option: ");
 
-    if (scanf("%d", &option) != 1) {
-        fprintf(stderr, "Invalid input.\n");
+    char choice[8] = {0};
+
+    if (get_text_input("Choose an option: ", choice, sizeof choice) != 0 ||
+        choice[0] < '1' || choice[0] > '4' || choice[1] != '\0') {
+        fputs("Invalid option.\n", stderr);
         return 1;
     }
 
-    while ((character = getchar()) != '\n' && character != EOF) {
+    option = choice[0] - '0';
+
+    if (option == 1 || option == 2 || option == 4) {
+        struct stat directory;
+
+        if (stat(".", &directory) != 0 ||
+            directory.st_uid != geteuid() ||
+            (directory.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+            fputs("Unable to use the vault in this directory.\n", stderr);
+            return 1;
+        }
     }
 
     switch (option) {

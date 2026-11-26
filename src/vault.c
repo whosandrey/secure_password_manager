@@ -516,6 +516,8 @@ int vault_unlock(
 
     if (fstat(file_descriptor, &file_information) != 0 ||
         !S_ISREG(file_information.st_mode) ||
+                file_information.st_uid != geteuid() ||
+        (file_information.st_mode & (S_IRWXG | S_IRWXO)) != 0 ||
         read_all(file_descriptor, header, sizeof header) != 0) {
         close(file_descriptor);
         return VAULT_FAILURE;
