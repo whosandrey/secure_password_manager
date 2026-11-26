@@ -38,11 +38,17 @@ int main(void)
     }
 
     switch (option) {
-        case 1:
+                case 1: {
+            struct VaultData data = {0};
+            const size_t max_entries =
+                sizeof data.records / sizeof data.records[0];
+            int input_ok = 1;
+
             if (get_hidden_input(
                     "Create master password: ",
                     master_password,
                     sizeof master_password) != 0) {
+                sodium_memzero(master_password, sizeof master_password);
                 fprintf(stderr, "Unable to read master password.\n");
                 return 1;
             }
@@ -51,112 +57,78 @@ int main(void)
                     "Confirm master password: ",
                     password_confirmation,
                     sizeof password_confirmation) != 0) {
-                sodium_memzero(
-                    master_password,
-                    sizeof master_password
-                );
-                fprintf(
-                    stderr,
-                    "Unable to read password confirmation.\n"
-                );
+                sodium_memzero(master_password, sizeof master_password);
+                sodium_memzero(password_confirmation, sizeof password_confirmation);
+                fprintf(stderr, "Unable to read password confirmation.\n");
                 return 1;
             }
 
-            if (sodium_memcmp(
-                    master_password,
-                    password_confirmation,
-                    sizeof master_password) != 0) {
+            int passwords_match = sodium_memcmp(
+                master_password,
+                password_confirmation,
+                sizeof master_password
+            ) == 0;
+            sodium_memzero(password_confirmation, sizeof password_confirmation);
+
+            if (!passwords_match) {
+                sodium_memzero(master_password, sizeof master_password);
                 fprintf(stderr, "Master passwords do not match.\n");
-
-                sodium_memzero(
-                    master_password,
-                    sizeof master_password
-                );
-                sodium_memzero(
-                    password_confirmation,
-                    sizeof password_confirmation
-                );
-
                 break;
             }
 
-            if (get_text_input(
-                    "Service: ",
-                    record.service,
-                    sizeof record.service) != 0) {
-                fprintf(stderr, "Invalid service name.\n");
+            while (data.count < max_entries) {
+                struct VaultRecord *entry = &data.records[data.count];
+                printf("\nEntry %u\n", data.count + 1);
 
-                sodium_memzero(
-                    master_password,
-                    sizeof master_password
-                );
-                sodium_memzero(
-                    password_confirmation,
-                    sizeof password_confirmation
-                );
-                vault_record_clear(&record);
+                if (get_text_input("Service: ", entry->service,
+                                   sizeof entry->service) != 0 ||
+                    get_text_input("Username: ", entry->username,
+                                   sizeof entry->username) != 0 ||
+                    get_hidden_input("Password to store: ", entry->password,
+                                     sizeof entry->password) != 0) {
+                    fprintf(stderr, "Invalid or incomplete entry.\n");
+                    input_ok = 0;
+                    break;
+                }
 
-                return 1;
+                ++data.count;
+
+                if (data.count == max_entries) {
+                    printf("Entry limit reached.\n");
+                    break;
+                }
+
+                char answer[8] = {0};
+                if (get_text_input("Add another entry? (y/n): ",
+                                   answer, sizeof answer) != 0 ||
+                    answer[1] != '\0') {
+                    fprintf(stderr, "Invalid answer. Vault was not created.\n");
+                    input_ok = 0;
+                    break;
+                }
+
+                if (answer[0] == 'n' || answer[0] == 'N') {
+                    break;
+                }
+                if (answer[0] != 'y' && answer[0] != 'Y') {
+                    fprintf(stderr, "Invalid answer. Vault was not created.\n");
+                    input_ok = 0;
+                    break;
+                }
             }
 
-            if (get_text_input(
-                    "Username: ",
-                    record.username,
-                    sizeof record.username) != 0) {
-                fprintf(stderr, "Invalid username.\n");
-
-                sodium_memzero(
-                    master_password,
-                    sizeof master_password
+            if (input_ok) {
+                vault_status = vault_create(
+                    DEFAULT_VAULT_FILE, master_password, &data
                 );
-                sodium_memzero(
-                    password_confirmation,
-                    sizeof password_confirmation
-                );
-                vault_record_clear(&record);
-
-                return 1;
             }
 
-            if (get_hidden_input(
-                    "Password to store: ",
-                    record.password,
-                    sizeof record.password) != 0) {
-                fprintf(stderr, "Invalid credential password.\n");
-
-                sodium_memzero(
-                    master_password,
-                    sizeof master_password
-                );
-                sodium_memzero(
-                    password_confirmation,
-                    sizeof password_confirmation
-                );
-                vault_record_clear(&record);
-
-                return 1;
-            }
-
-                        struct VaultData data = {0};
-            data.count = 1;
-            data.records[0] = record;
-
-            vault_status = vault_create(
-                DEFAULT_VAULT_FILE,
-                master_password,
-                &data
-            );
             vault_data_clear(&data);
+            sodium_memzero(master_password, sizeof master_password);
 
-            sodium_memzero(
-                master_password,
-                sizeof master_password
-            );
-            sodium_memzero(
-                password_confirmation,
-                sizeof password_confirmation
-            );
-            vault_record_clear(&record);
+            if (!input_ok) {
+                return 1;
+            }
 
             if (vault_status == VAULT_SUCCESS) {
                 printf("Encrypted vault created successfully.\n");
@@ -167,6 +139,8 @@ int main(void)
             }
 
             break;
+        }
+
 
                 case 2: {
             if (get_hidden_input(
