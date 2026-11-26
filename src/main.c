@@ -117,10 +117,12 @@ int main(void)
                 }
             }
 
-            if (input_ok) {
+             if (input_ok) {
                 vault_status = vault_create(
                     DEFAULT_VAULT_FILE, master_password, &data
                 );
+                fprintf(stderr, "event=vault_create result=%s\n",
+                        vault_status == VAULT_SUCCESS ? "success" : "failure");
             }
 
             vault_data_clear(&data);
@@ -157,6 +159,8 @@ int main(void)
                 master_password,
                 &unlocked_data
             );
+            fprintf(stderr, "event=vault_unlock result=%s\n",
+                    vault_status == VAULT_SUCCESS ? "success" : "failure");
 
             sodium_memzero(master_password, sizeof master_password);
 
@@ -209,6 +213,10 @@ int main(void)
                 vault_status = vault_add_entry(
                     DEFAULT_VAULT_FILE, master_password, &entry
                 );
+
+                fprintf(stderr, "event=vault_add_entry result=%s\n",
+                        vault_status == VAULT_SUCCESS ? "success" : "failure");
+
             }
 
             sodium_memzero(master_password, sizeof master_password);
