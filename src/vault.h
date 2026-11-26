@@ -29,14 +29,13 @@ enum VaultStatus {
 int vault_create(
     const char *path,
     const char *master_password,
-    const struct VaultRecord *record
+    const struct VaultData *data
 );
 
 int vault_unlock(
     const char *path,
     const char *master_password,
-    struct VaultRecord *record
-);
+    struct VaultData *data);
 
 void vault_record_clear(struct VaultRecord *record);
 void vault_data_clear(struct VaultData *data);

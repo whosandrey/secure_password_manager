@@ -137,11 +137,16 @@ int main(void)
                 return 1;
             }
 
+                        struct VaultData data = {0};
+            data.count = 1;
+            data.records[0] = record;
+
             vault_status = vault_create(
                 DEFAULT_VAULT_FILE,
                 master_password,
-                &record
+                &data
             );
+            vault_data_clear(&data);
 
             sodium_memzero(
                 master_password,
@@ -163,44 +168,50 @@ int main(void)
 
             break;
 
-        case 2:
+                case 2: {
             if (get_hidden_input(
                     "Enter master password: ",
                     master_password,
                     sizeof master_password) != 0) {
+                sodium_memzero(master_password, sizeof master_password);
                 fprintf(stderr, "Unable to read master password.\n");
                 return 1;
             }
 
+            struct VaultData unlocked_data = {0};
             vault_status = vault_unlock(
                 DEFAULT_VAULT_FILE,
                 master_password,
-                &record
+                &unlocked_data
             );
 
-            sodium_memzero(
-                master_password,
-                sizeof master_password
-            );
+            sodium_memzero(master_password, sizeof master_password);
 
             if (vault_status == VAULT_SUCCESS) {
                 printf("Vault unlocked successfully.\n");
-                printf("Service: %s\n", record.service);
-                printf("Username: %s\n", record.username);
-                printf("Password: ********\n");
+
+                if (unlocked_data.count == 0) {
+                    printf("Vault is empty.\n");
+                }
+
+                for (unsigned int i = 0; i < unlocked_data.count; ++i) {
+                    printf("\nEntry %u\n", i + 1);
+                    printf("Service: %s\n", unlocked_data.records[i].service);
+                    printf("Username: %s\n", unlocked_data.records[i].username);
+                    printf("Password: ********\n");
+                }
             } else if (vault_status == VAULT_DOES_NOT_EXIST) {
                 fprintf(stderr, "Vault does not exist.\n");
             } else if (vault_status == VAULT_AUTH_FAILED) {
-                fprintf(
-                    stderr,
-                    "Incorrect master password or damaged vault.\n"
-                );
+                fprintf(stderr, "Incorrect master password or damaged vault.\n");
             } else {
                 fprintf(stderr, "Unable to unlock vault.\n");
             }
 
-            vault_record_clear(&record);
+            vault_data_clear(&unlocked_data);
             break;
+        }
+
 
         case 3:
             printf("Goodbye.\n");
