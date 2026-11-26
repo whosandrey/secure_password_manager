@@ -14,7 +14,6 @@ int main(void)
 
     char master_password[MASTER_PASSWORD_MAX] = {0};
     char password_confirmation[MASTER_PASSWORD_MAX] = {0};
-    struct VaultRecord record = {0};
 
     if (sodium_init() < 0) {
         fprintf(stderr, "Failed to initialize the application.\n");
@@ -27,6 +26,7 @@ int main(void)
     printf("1. Create vault\n");
     printf("2. Unlock vault\n");
     printf("3. Exit\n");
+    printf("4. Add entry to existing vault\n");
     printf("Choose an option: ");
 
     if (scanf("%d", &option) != 1) {
@@ -38,7 +38,7 @@ int main(void)
     }
 
     switch (option) {
-                case 1: {
+        case 1: {
             struct VaultData data = {0};
             const size_t max_entries =
                 sizeof data.records / sizeof data.records[0];
@@ -141,8 +141,7 @@ int main(void)
             break;
         }
 
-
-                case 2: {
+        case 2: {
             if (get_hidden_input(
                     "Enter master password: ",
                     master_password,
@@ -186,10 +185,45 @@ int main(void)
             break;
         }
 
-
         case 3:
             printf("Goodbye.\n");
             break;
+
+        case 4: {
+            struct VaultRecord entry = {0};
+
+            if (get_hidden_input("Enter master password: ",
+                                 master_password,
+                                 sizeof master_password) != 0 ||
+                get_text_input("Service: ",
+                               entry.service,
+                               sizeof entry.service) != 0 ||
+                get_text_input("Username: ",
+                               entry.username,
+                               sizeof entry.username) != 0 ||
+                get_hidden_input("Password to store: ",
+                                 entry.password,
+                                 sizeof entry.password) != 0) {
+                vault_status = VAULT_FAILURE;
+            } else {
+                vault_status = vault_add_entry(
+                    DEFAULT_VAULT_FILE, master_password, &entry
+                );
+            }
+
+            sodium_memzero(master_password, sizeof master_password);
+            vault_record_clear(&entry);
+
+            if (vault_status == VAULT_SUCCESS) {
+                puts("Entry added.");
+            } else if (vault_status == VAULT_FULL) {
+                fputs("Vault is full.\n", stderr);
+            } else {
+                fputs("Unable to add entry.\n", stderr);
+            }
+
+            break;
+        }
 
         default:
             printf("Invalid option.\n");
@@ -197,11 +231,7 @@ int main(void)
     }
 
     sodium_memzero(master_password, sizeof master_password);
-    sodium_memzero(
-        password_confirmation,
-        sizeof password_confirmation
-    );
-    vault_record_clear(&record);
+    sodium_memzero(password_confirmation, sizeof password_confirmation);
 
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -619,6 +620,62 @@ cleanup:
         vault_data_clear(data);
     }
 
+    return status;
+}
+
+int vault_add_entry(
+    const char *path,
+    const char *master_password,
+    const struct VaultRecord *entry)
+{
+    if (!record_is_valid(entry)) {
+        return VAULT_FAILURE;
+    }
+
+    struct VaultData data = {0};
+    int status = vault_unlock(path, master_password, &data);
+
+    if (status != VAULT_SUCCESS) {
+        vault_data_clear(&data);
+        return status;
+    }
+
+    if (data.count >= sizeof data.records / sizeof data.records[0]) {
+        vault_data_clear(&data);
+        return VAULT_FULL;
+    }
+
+    data.records[data.count] = *entry;
+    ++data.count;
+
+        char temporary_dir[4096];
+    char temporary_file[4096];
+
+    int length = snprintf(temporary_dir, sizeof temporary_dir,
+                          "%s.tmp.XXXXXX", path);
+    if (length < 0 || (size_t)length >= sizeof temporary_dir ||
+        mkdtemp(temporary_dir) == NULL) {
+        vault_data_clear(&data);
+        return VAULT_FAILURE;
+    }
+
+    length = snprintf(temporary_file, sizeof temporary_file,
+                      "%s/vault", temporary_dir);
+    if (length < 0 || (size_t)length >= sizeof temporary_file) {
+        (void)rmdir(temporary_dir);
+        vault_data_clear(&data);
+        return VAULT_FAILURE;
+    }
+
+    status = vault_create(temporary_file, master_password, &data);
+    vault_data_clear(&data);
+
+    if (status == VAULT_SUCCESS && rename(temporary_file, path) != 0) {
+        (void)unlink(temporary_file);
+        status = VAULT_FAILURE;
+    }
+
+    (void)rmdir(temporary_dir);
     return status;
 }
 
