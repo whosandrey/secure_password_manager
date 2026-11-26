@@ -271,6 +271,37 @@ static int deserialize_record(
 
     return 0;
 }
+static int deserialize_vault_data(
+    const unsigned char *payload,
+    size_t payload_size,
+    struct VaultData *data)
+{
+    if (data == NULL) {
+        return -1;
+    }
+    vault_data_clear(data);
+
+    if (payload == NULL || payload_size == 0) {
+        return -1;
+    }
+
+    unsigned int count = payload[0];
+    if (count > 16 || payload_size != 1 + count * VAULT_PAYLOAD_SIZE) {
+        return -1;
+    }
+
+        for (unsigned int i = 0; i < count; ++i) {
+        size_t offset = 1 + i * VAULT_PAYLOAD_SIZE;
+
+        if (deserialize_record(payload + offset, &data->records[i]) != 0) {
+            vault_data_clear(data);
+            return -1;
+        }
+    }
+
+    data->count = count;
+    return 0;
+}
 
 void vault_record_clear(struct VaultRecord *record)
 {
